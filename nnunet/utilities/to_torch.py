@@ -27,5 +27,6 @@ def to_cuda(data, non_blocking=True, gpu_id=0):
     if isinstance(data, list):
         data = [i.cuda(gpu_id, non_blocking=non_blocking) for i in data]
     else:
+        # data = data.contiguous()
         data = data.cuda(gpu_id, non_blocking=True)
     return data

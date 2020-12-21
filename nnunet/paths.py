@@ -26,9 +26,15 @@ default_cascade_trainer = "nnUNetTrainerV2CascadeFullRes"
 PLEASE READ paths.md FOR INFORMATION TO HOW TO SET THIS UP
 """
 
-base = os.environ['nnUNet_raw_data_base'] if "nnUNet_raw_data_base" in os.environ.keys() else None
-preprocessing_output_dir = os.environ['nnUNet_preprocessed'] if "nnUNet_preprocessed" in os.environ.keys() else None
-network_training_output_dir_base = os.path.join(os.environ['RESULTS_FOLDER']) if "RESULTS_FOLDER" in os.environ.keys() else None
+# base = os.environ['nnUNet_raw_data_base'] if "nnUNet_raw_data_base" in os.environ.keys() else None
+# preprocessing_output_dir = os.environ['nnUNet_preprocessed'] if "nnUNet_preprocessed" in os.environ.keys() else None
+# network_training_output_dir_base = os.path.join(os.environ['RESULTS_FOLDER']) if "RESULTS_FOLDER" in os.environ.keys() else None
+
+base = '/home/yilin.shen/mi/3DnnUNet/data'
+preprocessing_output_dir = '/home/yilin.shen/mi/3DnnUNet/preprocessed_data'
+network_training_output_dir_base = '/home/yilin.shen/mi/3DnnUNet/checkpoints/nnUNet_trained_models'
+# network_training_output_dir_base = '/home/yilin.shen/mi/3DnnUNet/checkpoints_DiceTopK/nnUNet_trained_models'
+# network_training_output_dir_base = '/home/yilin.shen/mi/3DnnUNet/checkpoints_DiceFocal/nnUNet_trained_models'
 
 if base is not None:
     nnUNet_raw_data = join(base, "nnUNet_raw_data")

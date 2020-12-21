@@ -12,6 +12,9 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import sys
+sys.path.append('..')
+sys.path.append('../..')
 
 import argparse
 from nnunet.postprocessing.consolidate_postprocessing import consolidate_folds

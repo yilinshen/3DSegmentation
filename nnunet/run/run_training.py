@@ -12,6 +12,9 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import sys
+sys.path.append('..')
+sys.path.append('../..')
 
 import argparse
 from batchgenerators.utilities.file_and_folder_operations import *
@@ -158,11 +161,12 @@ def main():
         trainer.network.eval()
 
         # predict validation
-        trainer.validate(save_softmax=args.npz, validation_folder_name=val_folder)
+        # trainer.validate(save_softmax=args.npz, validation_folder_name=val_folder)
+        trainer.validate(save_softmax=args.npz, validation_folder_name=val_folder, overwrite=False)
 
-        if network == '3d_lowres':
-            print("predicting segmentations for the next stage of the cascade")
-            predict_next_stage(trainer, join(dataset_directory, trainer.plans['data_identifier'] + "_stage%d" % 1))
+        # if network == '3d_lowres':
+        #     print("predicting segmentations for the next stage of the cascade")
+        #     predict_next_stage(trainer, join(dataset_directory, trainer.plans['data_identifier'] + "_stage%d" % 1))
 
 
 if __name__ == "__main__":

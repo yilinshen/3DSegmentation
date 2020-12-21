@@ -13,11 +13,16 @@
 #    limitations under the License.
 
 
+import sys
+sys.path.append('..')
+sys.path.append('../..')
+sys.path.append('../../..')
+
 from itertools import combinations
 import nnunet
 from batchgenerators.utilities.file_and_folder_operations import *
 from nnunet.evaluation.add_mean_dice_to_json import foreground_mean
-from nnunet.evaluation.model_selection.ensemble import ensemble
+from nnunet.evaluation.model_selection.ensemble import ensemble2, ensemble3, ensemble4
 from nnunet.paths import network_training_output_dir
 import numpy as np
 from subprocess import call
@@ -126,20 +131,70 @@ def main():
         # now run ensembling and add ensembling to results
         print("\nFound the following valid models:\n", valid_models)
         if len(valid_models) > 1:
-            for m1, m2 in combinations(valid_models, 2):
+            # for m1, m2 in combinations(valid_models, 2):
+            #
+            #     trainer_m1 = trc if m1 == "3d_cascade_fullres" else tr
+            #     trainer_m2 = trc if m2 == "3d_cascade_fullres" else tr
+            #
+            #     ensemble_name = "ensemble_" + m1 + "__" + trainer_m1 + "__" + pl + "--" + m2 + "__" + trainer_m2 + "__" + pl
+            #     output_folder_base = join(network_training_output_dir, "ensembles", id_task_mapping[t], ensemble_name)
+            #     maybe_mkdir_p(output_folder_base)
+            #
+            #     network1_folder = get_output_folder_name(m1, id_task_mapping[t], trainer_m1, pl)
+            #     network2_folder = get_output_folder_name(m2, id_task_mapping[t], trainer_m2, pl)
+            #
+            #     print("ensembling", network1_folder, network2_folder)
+            #     ensemble2(network1_folder, network2_folder, output_folder_base, id_task_mapping[t], validation_folder, folds)
+            #     # ensembling will automatically do postprocessingget_foreground_mean
+            #
+            #     # now get result of ensemble
+            #     results[ensemble_name] = get_mean_foreground_dice(join(output_folder_base, "ensembled_raw", "summary.json"))
+            #     summary_file = join(output_folder_base, "ensembled_raw", "summary.json")
+            #     foreground_mean(summary_file)
+            #     all_results[ensemble_name] = load_json(summary_file)['results']['mean']
+
+            # for m1, m2, m3 in combinations(valid_models, 3):
+            #
+            #     trainer_m1 = trc if m1 == "3d_cascade_fullres" else tr
+            #     trainer_m2 = trc if m2 == "3d_cascade_fullres" else tr
+            #     trainer_m3 = trc if m3 == "3d_cascade_fullres" else tr
+            #
+            #     ensemble_name = "ensemble_" + m1 + "__" + trainer_m1 + "__" + pl + "--" + m2 + "__" + trainer_m2 + "__" + pl + "--" + m3 + "__" + trainer_m3 + "__" + pl
+            #     output_folder_base = join(network_training_output_dir, "ensembles", id_task_mapping[t], ensemble_name)
+            #     maybe_mkdir_p(output_folder_base)
+            #
+            #     network1_folder = get_output_folder_name(m1, id_task_mapping[t], trainer_m1, pl)
+            #     network2_folder = get_output_folder_name(m2, id_task_mapping[t], trainer_m2, pl)
+            #     network3_folder = get_output_folder_name(m3, id_task_mapping[t], trainer_m3, pl)
+            #
+            #     print("ensembling", network1_folder, network2_folder, network3_folder)
+            #     ensemble3(network1_folder, network2_folder, network3_folder, output_folder_base, id_task_mapping[t], validation_folder, folds)
+            #     # ensembling will automatically do postprocessingget_foreground_mean
+            #
+            #     # now get result of ensemble
+            #     results[ensemble_name] = get_mean_foreground_dice(join(output_folder_base, "ensembled_raw", "summary.json"))
+            #     summary_file = join(output_folder_base, "ensembled_raw", "summary.json")
+            #     foreground_mean(summary_file)
+            #     all_results[ensemble_name] = load_json(summary_file)['results']['mean']
+
+            for m1, m2, m3, m4 in combinations(valid_models, 4):
 
                 trainer_m1 = trc if m1 == "3d_cascade_fullres" else tr
                 trainer_m2 = trc if m2 == "3d_cascade_fullres" else tr
+                trainer_m3 = trc if m3 == "3d_cascade_fullres" else tr
+                trainer_m4 = trc if m4 == "3d_cascade_fullres" else tr
 
-                ensemble_name = "ensemble_" + m1 + "__" + trainer_m1 + "__" + pl + "--" + m2 + "__" + trainer_m2 + "__" + pl
+                ensemble_name = "ensemble_" + m1 + "__" + trainer_m1 + "__" + pl + "--" + m2 + "__" + trainer_m2 + "__" + pl + "--" + m3 + "__" + trainer_m3 + "__" + pl + m4 + "__" + trainer_m4 + "__" + pl
                 output_folder_base = join(network_training_output_dir, "ensembles", id_task_mapping[t], ensemble_name)
                 maybe_mkdir_p(output_folder_base)
 
                 network1_folder = get_output_folder_name(m1, id_task_mapping[t], trainer_m1, pl)
                 network2_folder = get_output_folder_name(m2, id_task_mapping[t], trainer_m2, pl)
+                network3_folder = get_output_folder_name(m3, id_task_mapping[t], trainer_m3, pl)
+                network4_folder = get_output_folder_name(m4, id_task_mapping[t], trainer_m4, pl)
 
-                print("ensembling", network1_folder, network2_folder)
-                ensemble(network1_folder, network2_folder, output_folder_base, id_task_mapping[t], validation_folder, folds)
+                print("ensembling", network1_folder, network2_folder, network3_folder, network4_folder)
+                ensemble4(network1_folder, network2_folder, network3_folder, network4_folder, output_folder_base, id_task_mapping[t], validation_folder, folds)
                 # ensembling will automatically do postprocessingget_foreground_mean
 
                 # now get result of ensemble

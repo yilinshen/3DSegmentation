@@ -394,7 +394,7 @@ class NetworkTrainer(object):
 
     def _maybe_init_amp(self):
         if self.fp16 and self.amp_grad_scaler is None and torch.cuda.is_available():
-                self.amp_grad_scaler = GradScaler()
+            self.amp_grad_scaler = GradScaler()
 
     def plot_network_architecture(self):
         """

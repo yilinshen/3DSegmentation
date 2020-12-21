@@ -36,7 +36,36 @@ def merge(args):
                                              interpolation_order_z=0)
 
 
-def ensemble(training_output_folder1, training_output_folder2, output_folder, task, validation_folder, folds):
+def merge3(args):
+    file1, file2, file3, properties_file, out_file = args
+    if not isfile(out_file):
+        res1 = np.load(file1)['softmax']
+        res2 = np.load(file2)['softmax']
+        res3 = np.load(file3)['softmax']
+        props = load_pickle(properties_file)
+        mn = np.mean((res1, res2, res3), 0)
+        # Softmax probabilities are already at target spacing so this will not do any resampling (resampling parameters
+        # don't matter here)
+        save_segmentation_nifti_from_softmax(mn, out_file, props, 3, None, None, None, force_separate_z=None,
+                                             interpolation_order_z=0)
+
+
+def merge4(args):
+    file1, file2, file3, file4, properties_file, out_file = args
+    if not isfile(out_file):
+        res1 = np.load(file1)['softmax']
+        res2 = np.load(file2)['softmax']
+        res3 = np.load(file3)['softmax']
+        res4 = np.load(file4)['softmax']
+        props = load_pickle(properties_file)
+        mn = np.mean((res1, res2, res3, res4), 0)
+        # Softmax probabilities are already at target spacing so this will not do any resampling (resampling parameters
+        # don't matter here)
+        save_segmentation_nifti_from_softmax(mn, out_file, props, 3, None, None, None, force_separate_z=None,
+                                             interpolation_order_z=0)
+
+
+def ensemble2(training_output_folder1, training_output_folder2, output_folder, task, validation_folder, folds):
     print("\nEnsembling folders\n", training_output_folder1, "\n", training_output_folder2)
 
     output_folder_base = output_folder
@@ -93,8 +122,8 @@ def ensemble(training_output_folder1, training_output_folder2, output_folder, ta
 
     if not isfile(join(output_folder, "summary.json")) and len(out_files) > 0:
         aggregate_scores(tuple(zip(out_files, gt_segmentations)), labels=plans['all_classes'],
-                     json_output_file=join(output_folder, "summary.json"), json_task=task,
-                     json_name=task + "__" + output_folder_base.split("/")[-1], num_threads=default_num_threads)
+                         json_output_file=join(output_folder, "summary.json"), json_task=task,
+                         json_name=task + "__" + output_folder_base.split("/")[-1], num_threads=default_num_threads)
 
     if not isfile(join(output_folder_base, "postprocessing.json")):
         # now lets also look at postprocessing. We cannot just take what we determined in cross-validation and apply it
@@ -113,6 +142,191 @@ def ensemble(training_output_folder1, training_output_folder2, output_folder, ta
                     join(out_dir_all_json, "%s__%s.json" % (task, output_folder_base.split("/")[-1])))
 
 
+def ensemble3(training_output_folder1, training_output_folder2, training_output_folder3, output_folder, task, validation_folder, folds):
+    print("\nEnsembling folders\n", training_output_folder1, "\n", training_output_folder2, "\n", training_output_folder3)
+
+    output_folder_base = output_folder
+    output_folder = join(output_folder_base, "ensembled_raw")
+
+    # only_keep_largest_connected_component is the same for all stages
+    dataset_directory = join(preprocessing_output_dir, task)
+    plans = load_pickle(join(training_output_folder1, "plans.pkl"))  # we need this only for the labels
+
+    files1 = []
+    files2 = []
+    files3 = []
+    property_files = []
+    out_files = []
+    gt_segmentations = []
+
+    folder_with_gt_segs = join(dataset_directory, "gt_segmentations")
+    # in the correct shape and we need the original geometry to restore the niftis
+
+    for f in folds:
+        validation_folder_net1 = join(training_output_folder1, "fold_%d" % f, validation_folder)
+        validation_folder_net2 = join(training_output_folder2, "fold_%d" % f, validation_folder)
+        validation_folder_net3 = join(training_output_folder3, "fold_%d" % f, validation_folder)
+        patient_identifiers1 = subfiles(validation_folder_net1, False, None, 'npz', True)
+        patient_identifiers2 = subfiles(validation_folder_net2, False, None, 'npz', True)
+        patient_identifiers3 = subfiles(validation_folder_net3, False, None, 'npz', True)
+        # we don't do postprocessing anymore so there should not be any of that noPostProcess
+        patient_identifiers1_nii = [i for i in subfiles(validation_folder_net1, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        patient_identifiers2_nii = [i for i in subfiles(validation_folder_net2, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        patient_identifiers3_nii = [i for i in subfiles(validation_folder_net3, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        assert len(patient_identifiers1) == len(patient_identifiers1_nii), "npz seem to be missing. run validation with --npz"
+        assert len(patient_identifiers2) == len(patient_identifiers2_nii), "npz seem to be missing. run validation with --npz"
+        assert len(patient_identifiers3) == len(patient_identifiers3_nii), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers1, patient_identifiers1_nii)]), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers2, patient_identifiers2_nii)]), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers3, patient_identifiers3_nii)]), "npz seem to be missing. run validation with --npz"
+
+        all_patient_identifiers = patient_identifiers1
+        for p in patient_identifiers2:
+            if p not in all_patient_identifiers:
+                all_patient_identifiers.append(p)
+        for p in patient_identifiers3:
+            if p not in all_patient_identifiers:
+                all_patient_identifiers.append(p)
+
+        # assert these patients exist for both methods
+        assert all([isfile(join(validation_folder_net1, i)) for i in all_patient_identifiers])
+        assert all([isfile(join(validation_folder_net2, i)) for i in all_patient_identifiers])
+        assert all([isfile(join(validation_folder_net3, i)) for i in all_patient_identifiers])
+
+        maybe_mkdir_p(output_folder)
+
+        for p in all_patient_identifiers:
+            files1.append(join(validation_folder_net1, p))
+            files2.append(join(validation_folder_net2, p))
+            files3.append(join(validation_folder_net3, p))
+            property_files.append(join(validation_folder_net1, p)[:-3] + "pkl")
+            out_files.append(join(output_folder, p[:-4] + ".nii.gz"))
+            gt_segmentations.append(join(folder_with_gt_segs, p[:-4] + ".nii.gz"))
+
+    p = Pool(default_num_threads)
+    p.map(merge3, zip(files1, files2, files3, property_files, out_files))
+    p.close()
+    p.join()
+
+    if not isfile(join(output_folder, "summary.json")) and len(out_files) > 0:
+        aggregate_scores(tuple(zip(out_files, gt_segmentations)), labels=plans['all_classes'],
+                         json_output_file=join(output_folder, "summary.json"), json_task=task,
+                         json_name=task + "__" + output_folder_base.split("/")[-1], num_threads=default_num_threads)
+
+    if not isfile(join(output_folder_base, "postprocessing.json")):
+        # now lets also look at postprocessing. We cannot just take what we determined in cross-validation and apply it
+        # here because things may have changed and may also be too inconsistent between the two networks
+        determine_postprocessing(output_folder_base, folder_with_gt_segs, "ensembled_raw", "temp",
+                                 "ensembled_postprocessed", default_num_threads, dice_threshold=0)
+
+        out_dir_all_json = join(network_training_output_dir, "summary_jsons")
+        json_out = load_json(join(output_folder_base, "ensembled_postprocessed", "summary.json"))
+
+        json_out["experiment_name"] = output_folder_base.split("/")[-1]
+        save_json(json_out, join(output_folder_base, "ensembled_postprocessed", "summary.json"))
+
+        maybe_mkdir_p(out_dir_all_json)
+        shutil.copy(join(output_folder_base, "ensembled_postprocessed", "summary.json"),
+                    join(out_dir_all_json, "%s__%s.json" % (task, output_folder_base.split("/")[-1])))
+
+
+def ensemble4(training_output_folder1, training_output_folder2, training_output_folder3, training_output_folder4, output_folder, task, validation_folder, folds):
+    print("\nEnsembling folders\n", training_output_folder1, "\n", training_output_folder2, "\n", training_output_folder3)
+
+    output_folder_base = output_folder
+    output_folder = join(output_folder_base, "ensembled_raw")
+
+    # only_keep_largest_connected_component is the same for all stages
+    dataset_directory = join(preprocessing_output_dir, task)
+    plans = load_pickle(join(training_output_folder1, "plans.pkl"))  # we need this only for the labels
+
+    files1 = []
+    files2 = []
+    files3 = []
+    files4 = []
+    property_files = []
+    out_files = []
+    gt_segmentations = []
+
+    folder_with_gt_segs = join(dataset_directory, "gt_segmentations")
+    # in the correct shape and we need the original geometry to restore the niftis
+
+    for f in folds:
+        validation_folder_net1 = join(training_output_folder1, "fold_%d" % f, validation_folder)
+        validation_folder_net2 = join(training_output_folder2, "fold_%d" % f, validation_folder)
+        validation_folder_net3 = join(training_output_folder3, "fold_%d" % f, validation_folder)
+        validation_folder_net4 = join(training_output_folder4, "fold_%d" % f, validation_folder)
+        patient_identifiers1 = subfiles(validation_folder_net1, False, None, 'npz', True)
+        patient_identifiers2 = subfiles(validation_folder_net2, False, None, 'npz', True)
+        patient_identifiers3 = subfiles(validation_folder_net3, False, None, 'npz', True)
+        patient_identifiers4 = subfiles(validation_folder_net4, False, None, 'npz', True)
+        # we don't do postprocessing anymore so there should not be any of that noPostProcess
+        patient_identifiers1_nii = [i for i in subfiles(validation_folder_net1, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        patient_identifiers2_nii = [i for i in subfiles(validation_folder_net2, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        patient_identifiers3_nii = [i for i in subfiles(validation_folder_net3, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        patient_identifiers4_nii = [i for i in subfiles(validation_folder_net4, False, None, suffix='nii.gz', sort=True) if not i.endswith("noPostProcess.nii.gz") and not i.endswith('_postprocessed.nii.gz')]
+        assert len(patient_identifiers1) == len(patient_identifiers1_nii), "npz seem to be missing. run validation with --npz"
+        assert len(patient_identifiers2) == len(patient_identifiers2_nii), "npz seem to be missing. run validation with --npz"
+        assert len(patient_identifiers3) == len(patient_identifiers3_nii), "npz seem to be missing. run validation with --npz"
+        assert len(patient_identifiers4) == len(patient_identifiers4_nii), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers1, patient_identifiers1_nii)]), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers2, patient_identifiers2_nii)]), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers3, patient_identifiers3_nii)]), "npz seem to be missing. run validation with --npz"
+        assert all([i[:-4] == j[:-7] for i, j in zip(patient_identifiers4, patient_identifiers4_nii)]), "npz seem to be missing. run validation with --npz"
+
+        all_patient_identifiers = patient_identifiers1
+        for p in patient_identifiers2:
+            if p not in all_patient_identifiers:
+                all_patient_identifiers.append(p)
+        for p in patient_identifiers3:
+            if p not in all_patient_identifiers:
+                all_patient_identifiers.append(p)
+        for p in patient_identifiers4:
+            if p not in all_patient_identifiers:
+                all_patient_identifiers.append(p)
+
+        # assert these patients exist for both methods
+        assert all([isfile(join(validation_folder_net1, i)) for i in all_patient_identifiers])
+        assert all([isfile(join(validation_folder_net2, i)) for i in all_patient_identifiers])
+        assert all([isfile(join(validation_folder_net3, i)) for i in all_patient_identifiers])
+        assert all([isfile(join(validation_folder_net4, i)) for i in all_patient_identifiers])
+
+        maybe_mkdir_p(output_folder)
+
+        for p in all_patient_identifiers:
+            files1.append(join(validation_folder_net1, p))
+            files2.append(join(validation_folder_net2, p))
+            files3.append(join(validation_folder_net3, p))
+            files4.append(join(validation_folder_net4, p))
+            property_files.append(join(validation_folder_net1, p)[:-3] + "pkl")
+            out_files.append(join(output_folder, p[:-4] + ".nii.gz"))
+            gt_segmentations.append(join(folder_with_gt_segs, p[:-4] + ".nii.gz"))
+
+    p = Pool(default_num_threads)
+    p.map(merge4, zip(files1, files2, files3, files4, property_files, out_files))
+    p.close()
+    p.join()
+
+    if not isfile(join(output_folder, "summary.json")) and len(out_files) > 0:
+        aggregate_scores(tuple(zip(out_files, gt_segmentations)), labels=plans['all_classes'],
+                         json_output_file=join(output_folder, "summary.json"), json_task=task,
+                         json_name=task + "__" + output_folder_base.split("/")[-1], num_threads=default_num_threads)
+
+    if not isfile(join(output_folder_base, "postprocessing.json")):
+        # now lets also look at postprocessing. We cannot just take what we determined in cross-validation and apply it
+        # here because things may have changed and may also be too inconsistent between the two networks
+        determine_postprocessing(output_folder_base, folder_with_gt_segs, "ensembled_raw", "temp",
+                                 "ensembled_postprocessed", default_num_threads, dice_threshold=0)
+
+        out_dir_all_json = join(network_training_output_dir, "summary_jsons")
+        json_out = load_json(join(output_folder_base, "ensembled_postprocessed", "summary.json"))
+
+        json_out["experiment_name"] = output_folder_base.split("/")[-1]
+        save_json(json_out, join(output_folder_base, "ensembled_postprocessed", "summary.json"))
+
+        maybe_mkdir_p(out_dir_all_json)
+        shutil.copy(join(output_folder_base, "ensembled_postprocessed", "summary.json"),
+                    join(out_dir_all_json, "%s__%s.json" % (task, output_folder_base.split("/")[-1])))
 
 
 if __name__ == "__main__":
@@ -129,5 +343,5 @@ if __name__ == "__main__":
 
     training_output_folder1 = args.training_output_folder1
     training_output_folder2 = args.training_output_folder2
-    ensemble(training_output_folder1, training_output_folder2, args.output_folder, args.task, args.validation_folder,
+    ensemble2(training_output_folder1, training_output_folder2, args.output_folder, args.task, args.validation_folder,
              args.folds)

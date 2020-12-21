@@ -431,7 +431,7 @@ class ExperimentPlanner(object):
                                                          self.preprocessor_name, current_module="nnunet.preprocessing")
         assert preprocessor_class is not None
         preprocessor = preprocessor_class(normalization_schemes, use_nonzero_mask_for_normalization,
-                                         self.transpose_forward,
+                                          self.transpose_forward,
                                           intensityproperties)
         target_spacings = [i["current_spacing"] for i in self.plans_per_stage.values()]
         if self.plans['num_stages'] > 1 and not isinstance(num_threads, (list, tuple)):
